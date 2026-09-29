@@ -27,14 +27,24 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'default_secret_key_nfh')
 
+# Helper to safely parse integer environment variables with fallbacks
+def _safe_int_env(env_var, default_val):
+    val = os.getenv(env_var)
+    if val is not None:
+        try:
+            return int(val)
+        except (ValueError, TypeError):
+            pass
+    return default_val
+
 # ---------------------------------------------------------------------------
 # Session inactivity security
 # ---------------------------------------------------------------------------
 # Production defaults: 30 minutes of inactivity with a warning during the
 # final 5 minutes. Environment overrides are intentionally limited to timing
 # values so local testing can use shorter intervals without changing code.
-SESSION_INACTIVITY_MINUTES = max(1, int(os.getenv('SESSION_INACTIVITY_MINUTES', '30')))
-SESSION_WARNING_MINUTES = max(1, int(os.getenv('SESSION_WARNING_MINUTES', '5')))
+SESSION_INACTIVITY_MINUTES = max(1, _safe_int_env('SESSION_INACTIVITY_MINUTES', 30))
+SESSION_WARNING_MINUTES = max(1, _safe_int_env('SESSION_WARNING_MINUTES', 5))
 if SESSION_WARNING_MINUTES >= SESSION_INACTIVITY_MINUTES:
     SESSION_WARNING_MINUTES = max(1, SESSION_INACTIVITY_MINUTES - 1)
 
@@ -211,10 +221,10 @@ DB_HOST = os.getenv('MYSQL_HOST', 'localhost')
 DB_USER = os.getenv('MYSQL_USER', 'root')
 DB_PASSWORD = os.getenv('MYSQL_PASSWORD', '')
 DB_NAME = os.getenv('MYSQL_DB', 'nfhsystem')
-DB_PORT = int(os.getenv('MYSQL_PORT', 3306))
+DB_PORT = _safe_int_env('MYSQL_PORT', 3306)
 
 app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
-app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', 587))
+app.config['MAIL_PORT'] = _safe_int_env('MAIL_PORT', 587)
 app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS', 'True').lower() == 'true'
 app.config['MAIL_USE_SSL'] = os.getenv('MAIL_USE_SSL', 'False').lower() == 'true'
 app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
@@ -414,9 +424,9 @@ def send_alert_and_email(user_id, subject, body, related_type=None, related_id=N
     in_app_exists = False
     email_already_sent = False
 
-    # Dedupe channels independently.  An earlier in-app notification (or an
+    # Dedupe channels independently. An earlier in-app notification (or an
     # earlier FAILED email attempt) must never prevent a later legitimate SMTP
-    # attempt.  Only a previously successful Email/Sent row suppresses mail.
+    # attempt. Only a previously successful Email/Sent row suppresses mail.
     if dedupe_key:
         try:
             conn = get_db_connection()
@@ -437,14 +447,14 @@ def send_alert_and_email(user_id, subject, body, related_type=None, related_id=N
         conn = get_db_connection()
         with conn.cursor() as cursor:
             # Registered email is the only field required for critical workflow
-            # delivery.  Older live NFH databases may not yet have the optional
+            # delivery. Older live NFH databases may not yet have the optional
             # email_notifications preference column; verification mail works on
             # those databases because it also depends only on the email address.
             cursor.execute("SELECT email FROM users WHERE id=%s", (user_id,))
             user = cursor.fetchone()
         conn.close()
 
-        # Important workflow events always email.  This intentionally avoids
+        # Important workflow events always email. This intentionally avoids
         # making correction/approval/rejection delivery depend on an optional
         # preference column that may be absent in an upgraded database.
         should_email = bool(important)
@@ -455,7 +465,7 @@ def send_alert_and_email(user_id, subject, body, related_type=None, related_id=N
             email_error = 'already_sent'
         elif recipient and should_email:
             # Match the proven registration verification path: construct a
-            # Flask-Mail Message and call the SAME global mail.send().  Do not
+            # Flask-Mail Message and call the SAME global mail.send(). Do not
             # add a second mail object or frontend recipient source.
             if not app.config.get('MAIL_USERNAME'):
                 email_error = 'Mail sender is not configured.'
@@ -800,7 +810,7 @@ def check_request(req_id):
     action = request.form.get('action')
     remarks = request.form.get('remarks', '').strip()
 
-    # Only the two existing initial-check workflow actions are valid.  Reject a
+    # Only the two existing initial-check workflow actions are valid. Reject a
     # missing/unknown action instead of silently storing the intermediate
     # 'Checked' status, because the Executive queue is keyed to
     # 'Pending Executive Approval'.
@@ -1002,7 +1012,7 @@ def president_action(req_id):
         conn = get_db_connection()
         with conn.cursor() as cursor:
             cursor.execute("""SELECT r.status, r.payment_status, r.request_type, r.user_id,
-                              CONCAT(u.first_name,' ',u.last_name) AS homeowner
+                                      CONCAT(u.first_name,' ',u.last_name) AS homeowner
                        FROM requests r JOIN users u ON u.id=r.user_id WHERE r.id=%s""", (req_id,))
             req = cursor.fetchone()
             if not req or req['status'] != 'Pending Executive Approval':
@@ -1016,9 +1026,9 @@ def president_action(req_id):
             prev_status=req['status']
             decision_note = details if reason == 'Other' else reason if action == 'reject' else None
             cursor.execute("""UPDATE requests SET status=%s, remarks=%s,
-                              executive_decision_reason=%s, executive_decision_details=%s,
-                              executive_decided_by=%s, executive_decided_role=%s, executive_decided_at=NOW()
-                              WHERE id=%s""",
+                                      executive_decision_reason=%s, executive_decision_details=%s,
+                                      executive_decided_by=%s, executive_decided_role=%s, executive_decided_at=NOW()
+                                      WHERE id=%s""",
                            (new_status, decision_note, reason if action=='reject' else None,
                             details if action=='reject' else None, session.get('full_name') or session.get('username'),
                             session.get('role'), req_id))
@@ -1190,7 +1200,7 @@ def get_user_data():
             req_list.append({
                 'id': r['id'], 'type': r['request_type'], 'title': r['request_type'],
                 'category': r.get('category') or 'Document Request',
-                                'date': r['date_submitted'].strftime('%Y-%m-%d %H:%M') if r.get('date_submitted') else '',
+                'date': r['date_submitted'].strftime('%Y-%m-%d %H:%M') if r.get('date_submitted') else '',
                 'fee': f"₱{fee_val:.2f}", 'payment_status': payment_status, 'status': status,
                 'remarks': r.get('remarks') or '', 'details': r.get('details') or '{}'
             })
@@ -1306,7 +1316,7 @@ def update_settings():
                                (em.get('name'), em.get('number'), em.get('relationship'), user_id))
             if 'preferences' in data:
                 cursor.execute("""UPDATE users SET email_notifications=%s, sms_notifications=%s
-                                 WHERE id=%s""",
+                                  WHERE id=%s""",
                                (1 if data['preferences'].get('email') else 0,
                                 1 if data['preferences'].get('sms') else 0, user_id))
         conn.close()
