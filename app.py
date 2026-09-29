@@ -207,21 +207,45 @@ def format_details(details):
 
 
 # ---------------------------------------------------------------------------
-# Database configuration
+# Environment / Database / Mail configuration
 # ---------------------------------------------------------------------------
+# IMPORTANT: Keep the actual credentials in Render Environment Variables or a
+# local .env file. Do not hard-code passwords, SMTP credentials, or SECRET_KEY
+# in this source file.
+#
+# Expected environment variables for the deployed NFH System:
+#   MYSQL_DB
+#   MYSQL_HOST
+#   MYSQL_PASSWORD
+#   MYSQL_PORT
+#   MYSQL_USER
+#   MAIL_DEFAULT_SENDER
+#   MAIL_PASSWORD
+#   MAIL_PORT
+#   MAIL_SERVER
+#   MAIL_USERNAME
+#   MAIL_USE_SSL
+#   MAIL_USE_TLS
+#   SECRET_KEY
+#   SESSION_INACTIVITY_MINUTES
+#   SESSION_WARNING_MINUTES
+
 DB_HOST = os.getenv('MYSQL_HOST', 'localhost')
 DB_USER = os.getenv('MYSQL_USER', 'root')
 DB_PASSWORD = os.getenv('MYSQL_PASSWORD', '')
 DB_NAME = os.getenv('MYSQL_DB', 'nfhsystem')
-DB_PORT = int(os.getenv('MYSQL_PORT', 3306))
+DB_PORT = int(os.getenv('MYSQL_PORT', '3306'))
 
+# Flask-Mail / Gmail SMTP
 app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
-app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', 587))
-app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS', 'True').lower() == 'true'
-app.config['MAIL_USE_SSL'] = os.getenv('MAIL_USE_SSL', 'False').lower() == 'true'
-app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
-app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
-app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER') or os.getenv('MAIL_USERNAME')
+app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', '587'))
+app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS', 'True').strip().lower() == 'true'
+app.config['MAIL_USE_SSL'] = os.getenv('MAIL_USE_SSL', 'False').strip().lower() == 'true'
+app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME', '')
+app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD', '')
+app.config['MAIL_DEFAULT_SENDER'] = (
+    os.getenv('MAIL_DEFAULT_SENDER') or app.config['MAIL_USERNAME']
+)
 
 mail = Mail(app)
 
