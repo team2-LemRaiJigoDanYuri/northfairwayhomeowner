@@ -40,9 +40,6 @@ def _safe_int_env(env_var, default_val):
 # ---------------------------------------------------------------------------
 # Session inactivity security
 # ---------------------------------------------------------------------------
-# Production defaults: 30 minutes of inactivity with a warning during the
-# final 5 minutes. Environment overrides are intentionally limited to timing
-# values so local testing can use shorter intervals without changing code.
 SESSION_INACTIVITY_MINUTES = max(1, _safe_int_env('SESSION_INACTIVITY_MINUTES', 30))
 SESSION_WARNING_MINUTES = max(1, _safe_int_env('SESSION_WARNING_MINUTES', 5))
 if SESSION_WARNING_MINUTES >= SESSION_INACTIVITY_MINUTES:
@@ -53,10 +50,7 @@ SESSION_WARNING_SECONDS = SESSION_WARNING_MINUTES * 60
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(seconds=SESSION_INACTIVITY_SECONDS)
 app.config['SESSION_REFRESH_EACH_REQUEST'] = False
 
-# Endpoints that run automatically in the background and therefore must never
-# extend an authenticated session.
 SESSION_BACKGROUND_ENDPOINTS = {'live_metrics'}
-
 
 UPLOAD_FOLDER = os.path.join(app.static_folder, 'uploads')
 ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png'}
@@ -73,9 +67,6 @@ HOA_REG = "HLURB Registration Number: NTR-20986-R | TIN No: 486-778-923-000"
 # ---------------------------------------------------------------------------
 # Request-type-specific approval routing
 # ---------------------------------------------------------------------------
-# Keep these names aligned with the request titles currently emitted by the
-# Homeowner request forms. These sets are the single backend source of truth
-# for who may perform the initial checking stage.
 SECRETARY_FIRST_REQUEST_TYPES = {
     'Certificate of Improvement',
     'Proof of Residency',
@@ -99,8 +90,6 @@ def initial_checker_roles(request_type):
         return {'Treasurer'}
     if request_type in SHARED_INITIAL_CHECK_REQUEST_TYPES:
         return {'Secretary', 'Treasurer'}
-    # Preserve legacy behavior for any older/unknown request title: Secretary
-    # remains the default initial reviewer rather than leaving the request stuck.
     return {'Secretary'}
 
 
@@ -110,9 +99,6 @@ def role_can_initial_check(role, request_type, assigned_officer=None):
     allowed = initial_checker_roles(request_type)
     if role not in allowed:
         return False
-    # Shared request types can initially be seen by either authorized officer.
-    # Once one officer has acted (for example, before a correction/resubmission),
-    # keep that request with the same checker so it does not bounce between roles.
     if request_type in SHARED_INITIAL_CHECK_REQUEST_TYPES and assigned_officer in {'Secretary', 'Treasurer'}:
         return role == assigned_officer
     return True
@@ -123,7 +109,6 @@ def request_is_check_actionable(req, role):
         req.get('status') in {'Submitted', 'Under Review'} and
         role_can_initial_check(role, req.get('request_type'), req.get('assigned_officer'))
     )
-
 
 
 # ---------------------------------------------------------------------------
@@ -145,12 +130,6 @@ def _session_expired_response():
 
 @app.before_request
 def enforce_session_inactivity():
-    """Expire authenticated sessions after 30 minutes without real activity.
-
-    Automatic live-metric polling is checked for expiration but intentionally
-    does not refresh last_activity. Normal page/API actions do refresh it, so
-    server-side enforcement still works when JavaScript is unavailable.
-    """
     if request.endpoint == 'static' or 'user_id' not in session:
         return None
 
@@ -215,13 +194,13 @@ def format_details(details):
 
 
 # ---------------------------------------------------------------------------
-# Database configuration
+# Database configuration (Updated with Railway fallback environment keys)
 # ---------------------------------------------------------------------------
-DB_HOST = os.getenv('MYSQL_HOST', 'localhost')
-DB_USER = os.getenv('MYSQL_USER', 'root')
-DB_PASSWORD = os.getenv('MYSQL_PASSWORD', '')
-DB_NAME = os.getenv('MYSQL_DB', 'nfhsystem')
-DB_PORT = _safe_int_env('MYSQL_PORT', 3306)
+DB_HOST = os.getenv('MYSQL_HOST') or os.getenv('MYSQLHOST', 'localhost')
+DB_USER = os.getenv('MYSQL_USER') or os.getenv('MYSQLUSER', 'root')
+DB_PASSWORD = os.getenv('MYSQL_PASSWORD') or os.getenv('MYSQLPASSWORD', '')
+DB_NAME = os.getenv('MYSQL_DB') or os.getenv('MYSQLDATABASE', 'nfhsystem')
+DB_PORT = _safe_int_env('MYSQL_PORT', _safe_int_env('MYSQLPORT', 3306))
 
 app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
 app.config['MAIL_PORT'] = _safe_int_env('MAIL_PORT', 587)
@@ -306,7 +285,7 @@ def generate_code(length=6):
 
 
 # ---------------------------------------------------------------------------
-# Validation helpers (also enforced server-side so URL/API bypass is blocked)
+# Validation helpers
 # ---------------------------------------------------------------------------
 COLOR_RE = re.compile(r'^[A-Za-z\s\-]+$')
 
@@ -329,7 +308,7 @@ def validate_vehicle_list(vehicles):
 
 
 # ---------------------------------------------------------------------------
-# HOA settings (key/value store) — used for Treasurer contact info
+# HOA settings
 # ---------------------------------------------------------------------------
 def get_settings(keys=None):
     conn = get_db_connection()
@@ -411,22 +390,12 @@ def notification_already_sent(dedupe_key):
 
 
 def send_alert_and_email(user_id, subject, body, related_type=None, related_id=None, dedupe_key=None, important=True):
-    """Persist the in-app notification and send the matching workflow email.
-
-    Workflow mail deliberately uses the same initialized Flask-Mail ``mail``
-    object and ``Message`` path as the already-working registration-code mail.
-    Business actions are committed by their routes before this helper runs, so
-    SMTP failure can never roll back an HOA decision.
-    """
     user = None
     email_sent = False
     email_error = None
     in_app_exists = False
     email_already_sent = False
 
-    # Dedupe channels independently. An earlier in-app notification (or an
-    # earlier FAILED email attempt) must never prevent a later legitimate SMTP
-    # attempt. Only a previously successful Email/Sent row suppresses mail.
     if dedupe_key:
         try:
             conn = get_db_connection()
@@ -446,17 +415,10 @@ def send_alert_and_email(user_id, subject, body, related_type=None, related_id=N
     try:
         conn = get_db_connection()
         with conn.cursor() as cursor:
-            # Registered email is the only field required for critical workflow
-            # delivery. Older live NFH databases may not yet have the optional
-            # email_notifications preference column; verification mail works on
-            # those databases because it also depends only on the email address.
             cursor.execute("SELECT email FROM users WHERE id=%s", (user_id,))
             user = cursor.fetchone()
         conn.close()
 
-        # Important workflow events always email. This intentionally avoids
-        # making correction/approval/rejection delivery depend on an optional
-        # preference column that may be absent in an upgraded database.
         should_email = bool(important)
         recipient = (user.get('email') or '').strip() if user else ''
 
@@ -464,9 +426,6 @@ def send_alert_and_email(user_id, subject, body, related_type=None, related_id=N
             email_sent = True
             email_error = 'already_sent'
         elif recipient and should_email:
-            # Match the proven registration verification path: construct a
-            # Flask-Mail Message and call the SAME global mail.send(). Do not
-            # add a second mail object or frontend recipient source.
             if not app.config.get('MAIL_USERNAME'):
                 email_error = 'Mail sender is not configured.'
                 app.logger.warning('[EMAIL FAILURE] %s for %s: MAIL_USERNAME is not configured', subject, related_id)
@@ -494,8 +453,6 @@ def send_alert_and_email(user_id, subject, body, related_type=None, related_id=N
         app.logger.warning('[EMAIL FAILURE] Recipient lookup for user_id=%s related_id=%s: %s',
                            user_id, related_id, email_error)
 
-    # Record only channel attempts that were not already successfully logged.
-    # Logging errors do not change the already-completed workflow action.
     try:
         conn = get_db_connection()
         with conn.cursor() as cursor:
@@ -540,8 +497,6 @@ def _role_home_url(role):
     return url_for('homeowner')
 
 
-# Prevent stale login/protected HTML from being restored as a usable page via browser cache.
-# Static assets keep their normal caching behavior.
 @app.after_request
 def set_auth_page_cache_headers(response):
     if request.endpoint in {'index', 'register_page', 'homeowner', 'officer', 'admin', 'logout'}:
@@ -589,10 +544,6 @@ def homeowner():
     return render_template('homeowner.html', treasurer=get_treasurer_contact())
 
 
-
-# ---------------------------------------------------------------------------
-# Officer route (queries homeowners for Treasurer dropdown)
-# ---------------------------------------------------------------------------
 @app.route('/officer')
 def officer():
     if 'user_id' not in session or session.get('role') not in OFFICER_ROLES:
@@ -604,7 +555,6 @@ def officer():
     try:
         conn = get_db_connection()
         with conn.cursor() as cursor:
-            # Fetch active homeowners for dropdown selection
             cursor.execute("""
                 SELECT id, first_name, last_name, username,
                        CONCAT(first_name, ' ', last_name) AS full_name
@@ -614,7 +564,6 @@ def officer():
             """)
             homeowners = cursor.fetchall()
 
-            # Fetch active standard pricing configuration
             cursor.execute("SELECT item_name, amount, proposed_amount, status FROM fees ORDER BY item_name ASC")
             fees_rows = cursor.fetchall()
             fees = {
@@ -625,7 +574,6 @@ def officer():
                 } for row in fees_rows
             }
 
-            # Fetch official fixed monthly due amount from active fees (defaults to 100.00 if missing)
             official_monthly_due = fees.get('Monthly Dues', {}).get('amount', 100.00)
 
             cursor.execute("""
@@ -644,9 +592,6 @@ def officer():
 
             active_requests = [r for r in all_requests if r['status'] != 'Cancelled']
 
-            # Role queues are driven by request type + current database status.
-            # `checking_requests` is the actionable initial-review queue; payment
-            # processing remains a separate Approved/Unpaid Treasurer stage.
             checking_requests = [r for r in active_requests if request_is_check_actionable(r, role)]
             if role == 'Secretary':
                 assigned_requests = checking_requests
@@ -709,9 +654,6 @@ def officer():
                            treasurer=get_treasurer_contact(), current_user=current_user, concerns=concerns, executive_history=executive_history)
 
 
-# ---------------------------------------------------------------------------
-# Admin route
-# ---------------------------------------------------------------------------
 @app.route('/admin')
 def admin():
     if 'user_id' not in session or session.get('role') != 'Admin':
@@ -810,15 +752,10 @@ def check_request(req_id):
     action = request.form.get('action')
     remarks = request.form.get('remarks', '').strip()
 
-    # Only the two existing initial-check workflow actions are valid. Reject a
-    # missing/unknown action instead of silently storing the intermediate
-    # 'Checked' status, because the Executive queue is keyed to
-    # 'Pending Executive Approval'.
     if action not in ('check', 'correction'):
         flash('Invalid request review action. Please try again.', 'error')
         return redirect(url_for('officer'))
 
-    # Requirement: Officer Remarks are REQUIRED when returning a request for correction.
     if action == 'correction' and not remarks:
         flash('Officer Remarks are required when returning a request for correction.', 'error')
         return redirect(url_for('officer'))
@@ -846,9 +783,6 @@ def check_request(req_id):
                 flash(f'{role} is not authorized to perform the initial checking for {prev_req["request_type"]}.', 'error')
                 return redirect(url_for('officer'))
 
-            # A successful authorized check is the handoff to the Executive.
-            # Correction retains the actual checker so resubmission returns to
-            # the correct Secretary/Treasurer workflow for shared request types.
             new_status = 'Pending Executive Approval' if action == 'check' else 'For Correction'
             checker = role if role in {'Secretary', 'Treasurer'} else prev_req.get('assigned_officer')
 
@@ -864,7 +798,6 @@ def check_request(req_id):
 
         correction_delivery = None
         if new_status == 'For Correction':
-            # Fetch the homeowner name for a clear, professional correction email.
             homeowner_name = 'Homeowner'
             try:
                 c2 = get_db_connection()
@@ -889,8 +822,6 @@ def check_request(req_id):
                 "and resubmit your request. Your existing request ID will be retained.\n\n"
                 "Thank you,\nNorth Fairway Homes Homeowners' Association"
             )
-            # A unique correction cycle begins only when an authorized officer
-            # performs this POST action. Refreshing/viewing the request cannot resend it.
             correction_delivery = send_alert_and_email(
                 prev_req['user_id'], subject, body,
                 related_type='request', related_id=req_id,
@@ -906,9 +837,6 @@ def check_request(req_id):
 
 @app.route('/officer/update_payment/<req_id>', methods=['POST'])
 def update_payment(req_id):
-    """Simple 'Mark as Paid' action (Treasurer/Admin). A request can only be
-    marked Paid once it has already been Approved (Requirement: Payment
-    Restriction). This replaces the old detailed Payment Recording feature."""
     if 'user_id' not in session or session.get('role') not in ['Treasurer', 'Admin']:
         return redirect(url_for('index'))
     try:
@@ -1012,7 +940,7 @@ def president_action(req_id):
         conn = get_db_connection()
         with conn.cursor() as cursor:
             cursor.execute("""SELECT r.status, r.payment_status, r.request_type, r.user_id,
-                                      CONCAT(u.first_name,' ',u.last_name) AS homeowner
+                                     CONCAT(u.first_name,' ',u.last_name) AS homeowner
                        FROM requests r JOIN users u ON u.id=r.user_id WHERE r.id=%s""", (req_id,))
             req = cursor.fetchone()
             if not req or req['status'] != 'Pending Executive Approval':
@@ -1026,9 +954,9 @@ def president_action(req_id):
             prev_status=req['status']
             decision_note = details if reason == 'Other' else reason if action == 'reject' else None
             cursor.execute("""UPDATE requests SET status=%s, remarks=%s,
-                                      executive_decision_reason=%s, executive_decision_details=%s,
-                                      executive_decided_by=%s, executive_decided_role=%s, executive_decided_at=NOW()
-                                      WHERE id=%s""",
+                                     executive_decision_reason=%s, executive_decision_details=%s,
+                                     executive_decided_by=%s, executive_decided_role=%s, executive_decided_at=NOW()
+                                     WHERE id=%s""",
                            (new_status, decision_note, reason if action=='reject' else None,
                             details if action=='reject' else None, session.get('full_name') or session.get('username'),
                             session.get('role'), req_id))
@@ -1088,12 +1016,7 @@ def president_fee_action():
 
 
 # ===========================================================================
-# OWNER APIS
-# ===========================================================================
-
-
-# ===========================================================================
-# ROLE-AWARE LIVE DASHBOARD METRICS (lightweight polling endpoint)
+# ROLE-AWARE LIVE DASHBOARD METRICS
 # ===========================================================================
 @app.route('/api/live-metrics', methods=['GET'])
 def live_metrics():
@@ -1151,6 +1074,7 @@ def live_metrics():
         return jsonify({'status':'success','role':role,'metrics':metrics,'updated_at':datetime.now().strftime('%H:%M:%S')})
     except Exception as e:
         return jsonify({'status':'error','message':str(e)}), 500
+
 
 @app.route('/api/user-data', methods=['GET'])
 def get_user_data():
@@ -1211,7 +1135,6 @@ def get_user_data():
         unread_alerts_count = sum(1 for a in alert_list if a['unread'])
 
         missing_dues_total = sum(float(m['amount']) for m in missing_dues_rows)
-        monthly_dues_summary = dues_summary(get_db_connection().cursor(), user_id) if False else None
         if missing_dues_rows:
             oldest = missing_dues_rows[0].get('due_month')
             today = datetime.now().date().replace(day=1)
@@ -1366,10 +1289,9 @@ def submit_request():
     title = data.get('title', 'Document Request')
     form_data = data.get('formData', {})
     category = data.get('category') if data.get('category') in VALID_CATEGORIES else 'Document Request'
-    submission_type = 'Query'  # legacy DB compatibility; no longer exposed as a homeowner classification
+    submission_type = 'Query'
     user_id = session['user_id']
 
-    # Server-side validation for Vehicle Sticker requests (cannot be bypassed via direct API calls)
     if 'Vehicle' in title:
         err = validate_vehicle_list(form_data.get('vehicles', []))
         if err:
@@ -1424,6 +1346,7 @@ def submit_request_concern():
         return jsonify({'status':'success','message':f'Your concern for {req_id} was submitted to the {assigned}.'})
     except Exception as e: return jsonify({'status':'error','message':str(e)}),500
 
+
 @app.route('/api/requests/concerns', methods=['GET'])
 def homeowner_concerns():
     if 'user_id' not in session or session.get('role') != 'Homeowner': return jsonify({'status':'error'}),401
@@ -1435,6 +1358,7 @@ def homeowner_concerns():
                           FROM request_concerns WHERE user_id=%s ORDER BY updated_at DESC""",(session['user_id'],))
         rows=cursor.fetchall()
     conn.close(); return jsonify({'status':'success','concerns':rows})
+
 
 @app.route('/officer/concerns/<int:concern_id>/respond', methods=['POST'])
 def respond_request_concern(concern_id):
@@ -1451,7 +1375,7 @@ def respond_request_concern(concern_id):
             cursor.execute("UPDATE request_concerns SET response_text=%s,status='Resolved',responded_by=%s,responded_at=NOW() WHERE id=%s",
                            (response,session.get('full_name') or session.get('username'),concern_id))
         conn.close()
-        # Resolve request/homeowner context server-side for the notification email.
+
         homeowner_name = 'Homeowner'
         request_type = 'Request'
         try:
@@ -1467,6 +1391,7 @@ def respond_request_concern(concern_id):
                 request_type = nctx.get('request_type') or request_type
         except Exception as exc:
             app.logger.warning('Could not resolve concern email context for concern_id=%s: %s', concern_id, exc)
+
         responder = session.get('full_name') or session.get('username') or session['role']
         body=(f"Dear {homeowner_name},\n\nYour concern regarding {request_type} request {c['request_id']} has received a response.\n\n"
               f"Officer Response: {response}\n\nResponded by: {responder}\nPosition: {session['role']}\n\n"
@@ -1479,10 +1404,9 @@ def respond_request_concern(concern_id):
     except Exception as e: flash(f'Error responding to concern: {e}','error')
     return redirect(url_for('officer'))
 
+
 @app.route('/api/requests/resubmit', methods=['POST'])
 def resubmit_request():
-    """Homeowner updates and resubmits a request that was returned 'For
-    Correction', moving it back into the review queue."""
     if 'user_id' not in session:
         return jsonify({'status': 'error', 'message': 'Unauthorized'}), 401
     data = request.get_json() or {}
@@ -1519,9 +1443,6 @@ def resubmit_request():
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
-# ---------------------------------------------------------------------------
-# Cancel request
-# ---------------------------------------------------------------------------
 @app.route('/api/requests/cancel', methods=['POST'])
 def cancel_request():
     if 'user_id' not in session:
@@ -1573,7 +1494,7 @@ def api_logout():
 
 
 # ===========================================================================
-# TREASURER — MISSING MONTHLY DUES (applied directly; no Executive approval)
+# TREASURER — MISSING MONTHLY DUES
 # ===========================================================================
 @app.route('/api/treasurer/submit-adjustment', methods=['POST'])
 def treasurer_submit_adjustment():
@@ -1608,7 +1529,6 @@ def treasurer_submit_adjustment():
                             proposed, reason, session.get('username'), session.get('username'), datetime.now()))
             adj_id = cursor.lastrowid
 
-            # Create the individual missing-month ledger entries
             month_cursor = datetime.now().date().replace(day=1)
             for i in range(missing_months):
                 due_month = (month_cursor.replace(day=1) - timedelta(days=30 * i))
@@ -1619,7 +1539,6 @@ def treasurer_submit_adjustment():
         log_audit_action(session.get('username'), session.get('role'),
                          'Missing Dues Adjustment Applied', f'Adjustment-{adj_id}', None, proposed)
 
-        # Requirement: clear, informative missing-dues notification for the homeowner.
         treasurer = get_treasurer_contact()
         send_alert_and_email(
             user_id, 'Missing Monthly Dues Notice',
@@ -1833,9 +1752,6 @@ def send_reg_code():
     code = generate_code()
     VERIFICATION_CODES[email] = code
     if not app.config.get('MAIL_USERNAME'):
-        # Email is not configured — this is expected in local/dev setups.
-        # Print the code to the console AND return it in the response so
-        # whoever is testing can actually see it.
         print(f"[DEV MODE — email not configured] Registration code for {email}: {code}")
         return jsonify({'status': 'success',
                         'message': f'Email is not configured on this server. Your verification code is: {code}'})
@@ -1942,7 +1858,6 @@ def forgot_reset_password():
 # APPROVAL EMAIL
 # ===========================================================================
 def send_approval_email(req_id, req_type, user_id, executive_name=None, executive_role=None):
-    """Notify the request owner after a committed Executive approval."""
     try:
         conn = get_db_connection()
         with conn.cursor() as cursor:
@@ -1977,9 +1892,8 @@ def send_approval_email(req_id, req_type, user_id, executive_name=None, executiv
         return {'created': False, 'email_sent': False, 'reason': f'{type(e).__name__}: {e}'}
 
 
-
 # ===========================================================================
-# PDF GENERATION (individual requests + admin reports)
+# PDF GENERATION
 # ===========================================================================
 def _pdf_styles():
     styles = getSampleStyleSheet()
@@ -2031,7 +1945,6 @@ REQUEST_TYPE_FIELD_LABELS = {
 
 
 def generate_request_pdf(req):
-    """Builds a PDF document tailored to the request's type."""
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=LETTER, topMargin=0.6 * inch, bottomMargin=0.6 * inch,
                             leftMargin=0.7 * inch, rightMargin=0.7 * inch)
@@ -2124,7 +2037,7 @@ def request_pdf(req_id):
 
 
 # ---------------------------------------------------------------------------
-# Admin PDF reports (with filters)
+# Admin PDF reports
 # ---------------------------------------------------------------------------
 def _require_admin():
     return 'user_id' in session and session.get('role') == 'Admin'
@@ -2367,7 +2280,6 @@ def report_adjustments_pdf():
     doc.build(elements)
     log_audit_action(session.get('username'), session.get('role'), 'Generate Missing Dues PDF', 'financial_adjustments')
     return _response_pdf(buffer, 'NFH_Missing_Dues_Report.pdf')
-
 
 
 @app.route('/admin/reports/officers/pdf')
