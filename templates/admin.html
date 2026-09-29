@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Northfairway - Admin System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='session-timeout.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='nfh-responsive.css', v='20260920h') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='admin-unified.css', v='20260920k') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+</head>
+<body>
+    <div class="admin-wrapper">
+        <aside class="sidebar" id="sidebar" aria-label="Primary navigation">
+            <div class="sidebar-header">
+                <img src="{{ url_for('static', filename='logo.png') }}" alt="NFH HOA logo" class="sidebar-logo" onerror="this.style.display='none'">
+                <div class="brand-text"><h2>NFH HOA</h2><span>Homeowners' Association</span></div>
+                <button class="sidebar-chevron" id="desktopSidebarToggle" type="button" aria-label="Collapse sidebar" title="Collapse sidebar" aria-controls="sidebar" aria-expanded="true"><i class="fa-solid fa-angles-left" aria-hidden="true"></i></button>
+            </div>
+            <nav class="sidebar-nav">
+                <div class="nav-section">Dashboard</div>
+                <a href="#dashboard" class="nav-item active" data-tab="dashboard-tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg><span>Overview</span></a>
+                <div class="nav-section">Management</div>
+                <a href="#officers" class="nav-item" data-tab="officers-tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><span>Officer Accounts</span></a>
+                <a href="#requests" class="nav-item" data-tab="requests-tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>Request Monitoring</span></a>
+                <a href="#fees" class="nav-item" data-tab="fees-tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg><span>Fee Monitoring</span></a>
+                <div class="nav-section">History</div>
+                <a href="#audit" class="nav-item" data-tab="audit-tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span>Audit Trail</span></a>
+                <a href="#cancellations" class="nav-item" data-tab="cancellations-tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg><span>Cancellation History</span></a>
+                <a href="#adjustments" class="nav-item" data-tab="adjustments-tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><polyline points="7 14 12 9 16 13 21 8"/></svg><span>Missing Dues History</span></a>
+                <a href="#notifications" class="nav-item" data-tab="notifications-tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg><span>Notification History</span></a>
+                <div class="nav-section">Reports</div>
+                <a href="#reports" class="nav-item" data-tab="reports-tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg><span>PDF Reports</span></a>
+            </nav>
+            <div class="sidebar-footer">
+                <a href="javascript:void(0)" class="nav-item sidebar-logout" id="logoutBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg><span>Sign Out</span></a>
+            </div>
+        </aside>
+        <button class="sidebar-backdrop" id="sidebarBackdrop" type="button" aria-label="Close navigation"></button>
+        <div class="main-container">
+            <header class="top-header">
+                <button class="toggle-btn mobile-nav-toggle" id="sidebarToggle" type="button" aria-label="Toggle navigation" title="Toggle navigation" aria-controls="sidebar" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+                <div class="header-title">
+                    <h1 id="pageTitle">Overview</h1>
+                    <p id="portalContext" class="portal-context">Administrator Portal</p>
+                </div>
+                <div class="header-role-identity" aria-label="Signed in as {{ session.full_name }}, Administrator"><span class="account-avatar" aria-hidden="true">{{ (session.full_name or 'A')[:1]|upper }}</span><span class="account-copy"><strong class="user-name">{{ session.full_name }}</strong><small>Administrator</small></span></div>
+            </header>
+            {% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}<div class="flash-messages">{% for category, message in messages %}<div class="alert alert-{{ category }}">{{ message }}</div>{% endfor %}</div>{% endif %}{% endwith %}
+
+            <main class="content-body">
+                <section id="dashboard-tab" class="tab-content active nfh-dashboard-overview">
+                    <div class="card-grid nfh-stats-grid">
+                        <button type="button" class="stat-card metric-card metric-homeowners dashboard-action-card" data-tab-jump="officers-tab"><div class="stat-icon metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div class="stat-details"><h3>Total Homeowners</h3><p class="stat-number" data-metric="total_homeowners">{{ metrics.total_homeowners }}</p></div></button>
+                        <button type="button" class="stat-card metric-card metric-requests dashboard-action-card" data-tab-jump="requests-tab"><div class="stat-icon metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h8M8 17h6"/></svg></div><div class="stat-details"><h3>Total Requests</h3><p class="stat-number" data-metric="total_requests">{{ metrics.total_requests }}</p></div></button>
+                        <button type="button" class="stat-card metric-card metric-pending dashboard-action-card" data-tab-jump="requests-tab"><div class="stat-icon metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><circle cx="12" cy="15" r="3"/><path d="M12 13.5V15l1 1"/></svg></div><div class="stat-details"><h3>Pending Requests</h3><p class="stat-number" data-metric="pending_requests">{{ metrics.pending_requests }}</p></div></button>
+                        <button type="button" class="stat-card metric-card metric-approval dashboard-action-card" data-tab-jump="requests-tab"><div class="stat-icon metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="m9 15 2 2 4-4"/></svg></div><div class="stat-details"><h3>Pending Executive Approval</h3><p class="stat-number" data-metric="pending_executive">{{ metrics.pending_executive }}</p></div></button>
+                        <button type="button" class="stat-card metric-card metric-officers dashboard-action-card" data-tab-jump="officers-tab"><div class="stat-icon metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><circle cx="12" cy="9" r="2.5"/><path d="M8.5 16a3.5 3.5 0 0 1 7 0"/></svg></div><div class="stat-details"><h3>Active Officers</h3><p class="stat-number" data-metric="active_officers">{{ metrics.active_officers }}</p></div></button>
+                        <button type="button" class="stat-card metric-card metric-fee dashboard-action-card" data-tab-jump="fees-tab"><div class="stat-icon metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 18h8"/><path d="M12 8v8"/><path d="M15 10h-4.5a2 2 0 0 0 0 4H15"/></svg></div><div class="stat-details"><h3>Pending Fee Changes</h3><p class="stat-number" data-metric="pending_fee_changes">{{ metrics.pending_fee_changes }}</p></div></button>
+                    </div>
+                    <div class="content-card nfh-activity-panel recent-activity-panel">
+                        <div class="card-header activity-header"><div><h2>Role Activity</h2></div></div>
+                        <div class="activity-list" aria-label="Recent administrator activity">
+                        {% set ns = namespace(shown=0) %}
+                        {% for audit in audits|reverse %}
+                          {% if ns.shown < 8 and audit.role == 'Admin' and audit.action not in ['User Login','Login','Page View','Dashboard View','Notification Read'] %}
+                            {% set ns.shown = ns.shown + 1 %}
+                            {% set a = audit.action|lower %}
+                            <article class="activity-entry" data-action="{{ audit.action|e }}">
+                              <div class="activity-icon" aria-hidden="true">
+                                {% if 'officer' in a or 'user' in a or 'account' in a %}<i class="fa-solid fa-user-shield"></i>
+                                {% elif 'approve' in a or 'complete' in a %}<i class="fa-solid fa-circle-check"></i>
+                                {% elif 'reject' in a or 'cancel' in a or 'deactivate' in a %}<i class="fa-solid fa-circle-xmark"></i>
+                                {% elif 'fee' in a or 'due' in a or 'payment' in a %}<i class="fa-solid fa-receipt"></i>
+                                {% elif 'report' in a %}<i class="fa-regular fa-file-lines"></i>
+                                {% elif 'setting' in a or 'config' in a %}<i class="fa-solid fa-gear"></i>
+                                {% else %}<i class="fa-solid fa-clock-rotate-left"></i>{% endif %}
+                              </div>
+                              <div class="activity-content">
+                                <div class="activity-title-row"><strong>{{ audit.action }}</strong><time class="activity-time" data-activity-time="{{ audit.timestamp }}">{{ audit.timestamp }}</time></div>
+                                <div class="activity-target">{{ audit.item or 'System activity' }}</div>
+                                {% if audit.prev_val and audit.new_val and audit.prev_val != 'None' and audit.new_val != 'None' %}<p class="activity-description"><span>{{ audit.prev_val }}</span> → <span>{{ audit.new_val }}</span></p>
+                                {% elif audit.new_val and audit.new_val != 'None' %}<p class="activity-description"><span>{{ audit.new_val }}</span></p>{% endif %}
+                              </div>
+                            </article>
+                          {% endif %}
+                        {% endfor %}
+                        {% if ns.shown == 0 %}<div class="activity-empty"><i class="fa-regular fa-clock"></i><strong>No recent activity.</strong></div>{% endif %}
+                        </div>
+                    </div>
+                </section>
+
+                <section id="officers-tab" class="tab-content"><div class="content-card"><div class="card-header flex-between"><h2>Officer Accounts Management</h2><button class="btn btn-primary" onclick="openModal('createOfficerModal')">+ Create Officer</button></div><div class="table-responsive"><table class="data-table"><thead><tr><th>ID</th><th>Full Name</th><th>Username</th><th>Email</th><th>Phone</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+                    {% for off in officers %}<tr><td>{{ off.id }}</td><td><strong>{{ off.full_name }}</strong></td><td>{{ off.username }}</td><td>{{ off.email }}</td><td>{{ off.mobile }}</td><td>{{ off.role }}</td><td><span class="status-pill status-{{ off.status|lower }}">{{ off.status }}</span></td><td><button type="button" class="btn btn-sm btn-secondary" onclick="openModal('viewOfficer{{ off.id }}')">View</button> <button type="button" class="btn btn-sm btn-primary" onclick="openModal('editOfficer{{ off.id }}')">Edit</button> <form action="{{ url_for('toggle_officer_status', officer_id=off.id) }}" method="POST" style="display:inline;" data-system-confirm="Update this officer account status?" data-confirm-title="Update Officer Status" data-confirm-text="{{ 'Deactivate' if off.status == 'Active' else 'Activate' }}" data-confirm-type="{{ 'danger' if off.status == 'Active' else 'primary' }}" data-context-label="Officer" data-context-value="{{ off.full_name }}"><button class="btn btn-sm {{ 'btn-danger' if off.status == 'Active' else 'btn-success' }}">{{ 'Deactivate' if off.status == 'Active' else 'Activate' }}</button></form></td></tr>
+                    <div class="modal-overlay" id="viewOfficer{{ off.id }}"><div class="modal-box"><div class="modal-header"><h3>Officer Account</h3><button class="close-btn" onclick="closeModal('viewOfficer{{ off.id }}')">&times;</button></div><div class="modal-body"><p><strong>{{ off.full_name }}</strong></p><p>Username: {{ off.username }}</p><p>Email: {{ off.email }}</p><p>Phone: {{ off.mobile }}</p><p>Role: {{ off.role }}</p><p>Status: {{ off.status }}</p></div></div></div>
+                    <div class="modal-overlay" id="editOfficer{{ off.id }}"><div class="modal-box"><div class="modal-header"><h3>Edit Officer</h3><button class="close-btn" onclick="closeModal('editOfficer{{ off.id }}')">&times;</button></div><form action="{{ url_for('edit_officer', officer_id=off.id) }}" method="POST"><div class="modal-body"><div class="form-group"><label>Full Name</label><input class="form-input" name="full_name" value="{{ off.full_name }}" required></div><div class="form-group"><label>Username</label><input class="form-input" name="username" value="{{ off.username }}" required></div><div class="form-group"><label>Email</label><input class="form-input" type="email" name="email" value="{{ off.email }}" required></div><div class="form-group"><label>Contact Number</label><input class="form-input" name="phone" value="{{ off.mobile }}" pattern="09\d{9}" required></div><div class="form-group"><label>Role</label><select class="form-input" name="role"><option {% if off.role=='Secretary' %}selected{% endif %}>Secretary</option><option {% if off.role=='Treasurer' %}selected{% endif %}>Treasurer</option><option {% if off.role=='President' %}selected{% endif %}>President</option><option {% if off.role=='Vice President' %}selected{% endif %}>Vice President</option><option {% if off.role=='Board Director' %}selected{% endif %}>Board Director</option></select></div><p class="form-help">Passwords are never displayed. Password reset remains a separate security action.</p></div><div class="modal-footer"><button class="btn btn-secondary" type="button" onclick="closeModal('editOfficer{{ off.id }}')">Cancel</button><button class="btn btn-primary" type="submit">Save Changes</button></div></form></div></div>
+                    {% else %}<tr><td colspan="8" class="text-center">No officers.</td></tr>{% endfor %}
+                </tbody></table></div></div></section>
+
+                <section id="requests-tab" class="tab-content"><div class="content-card"><div class="card-header"><h2>All Homeowner Requests</h2></div><div class="table-responsive"><table class="data-table"><thead><tr><th>Request ID</th><th>Homeowner</th><th>Type</th><th>Category</th><th>Submission</th><th>Status</th><th>Payment</th><th>Submitted</th><th>Updated</th><th>PDF</th></tr></thead><tbody>
+                    {% for req in requests %}<tr><td><code>{{ req.id }}</code></td><td>{{ req.homeowner }}</td><td>{{ req.request_type }}</td><td>{{ req.category }}</td><td><span class="status-pill status-{{ req.submission_type|lower }}">{{ req.submission_type }}</span></td><td><span class="status-pill status-{{ req.status|replace(' ','-')|lower }}">{{ req.status }}</span></td><td><span class="pay-pill pay-{{ req.payment_status|lower }}">{{ req.payment_status }}</span></td><td>{{ req.date_submitted }}</td><td>{{ req.last_updated }}</td><td><a href="{{ url_for('request_pdf', req_id=req.id) }}" target="_blank">View</a></td></tr>{% else %}<tr><td colspan="10" class="text-center">No requests.</td></tr>{% endfor %}
+                </tbody></table></div></div></section>
+
+                <section id="fees-tab" class="tab-content"><div class="content-card"><div class="card-header"><h2>Standard System Fees</h2></div><div class="table-responsive"><table class="data-table"><thead><tr><th>Fee Item</th><th>Current</th><th>Proposed</th><th>Status</th></tr></thead><tbody>
+                    {% for key, fee in fees.items() %}<tr><td><strong>{{ key }}</strong></td><td>₱{{ "%.2f"|format(fee.amount) }}</td><td>{% if fee.proposed_amount %}<strong>₱{{ "%.2f"|format(fee.proposed_amount) }}</strong>{% else %}-{% endif %}</td><td><span class="status-pill status-{{ fee.status|replace(' ','-')|lower }}">{{ fee.status }}</span></td></tr>{% endfor %}
+                </tbody></table></div></div></section>
+
+                <section id="audit-tab" class="tab-content"><div class="content-card"><div class="card-header"><h2>Append-Only System Audit Trail</h2></div><div class="table-responsive"><table class="data-table"><thead><tr><th>Timestamp</th><th>User</th><th>Role</th><th>Action</th><th>Item</th><th>Previous</th><th>New</th></tr></thead><tbody>
+                    {% for audit in audits|reverse %}<tr><td>{{ audit.timestamp }}</td><td>{{ audit.username }}</td><td>{{ audit.role }}</td><td>{{ audit.action }}</td><td><code>{{ audit.item }}</code></td><td>{{ audit.prev_val }}</td><td>{{ audit.new_val }}</td></tr>{% else %}<tr><td colspan="7" class="text-center">No audit records.</td></tr>{% endfor %}
+                </tbody></table></div></div></section>
+
+                <section id="cancellations-tab" class="tab-content"><div class="content-card"><div class="card-header"><h2>Cancellation History (records retained, not deleted)</h2></div><div class="table-responsive"><table class="data-table"><thead><tr><th>Request ID</th><th>Type</th><th>Cancelled By</th><th>Reason</th><th>Last Updated</th></tr></thead><tbody>
+                    {% for c in cancellations %}<tr><td><code>{{ c.id }}</code></td><td>{{ c.request_type }}</td><td>{{ c.cancelled_by or '-' }}</td><td>{{ c.cancellation_reason or '-' }}</td><td>{{ c.last_updated }}</td></tr>{% else %}<tr><td colspan="5" class="text-center">No cancellations.</td></tr>{% endfor %}
+                </tbody></table></div></div></section>
+
+                <section id="adjustments-tab" class="tab-content"><div class="content-card"><div class="card-header"><h2>Missing Monthly Dues History (applied directly by Treasurer)</h2></div><div class="table-responsive"><table class="data-table"><thead><tr><th>ID</th><th>Homeowner</th><th>Monthly Due</th><th>Missing</th><th>Total</th><th>Reason</th><th>Applied By</th><th>Date</th></tr></thead><tbody>
+                    {% for a in financial_adjustments %}<tr><td>{{ a.id }}</td><td>{{ a.homeowner_name }}</td><td>₱{{ "%.2f"|format(a.monthly_due) }}</td><td>{{ a.missing_months }}</td><td>₱{{ "%.2f"|format(a.proposed_adjustment) }}</td><td>{{ a.reason or '-' }}</td><td>{{ a.submitted_by }}</td><td>{{ a.created_at }}</td></tr>{% else %}<tr><td colspan="8" class="text-center">No adjustments.</td></tr>{% endfor %}
+                </tbody></table></div></div></section>
+
+                <section id="notifications-tab" class="tab-content"><div class="content-card"><div class="card-header"><h2>Notification History</h2></div><div class="table-responsive"><table class="data-table"><thead><tr><th>ID</th><th>Channel</th><th>Subject</th><th>Recipient</th><th>Related</th><th>Status</th><th>Sent</th></tr></thead><tbody>
+                    {% for n in notifications_log %}<tr><td>{{ n.id }}</td><td>{{ n.channel }}</td><td>{{ n.subject }}</td><td>{{ n.recipient or '-' }}</td><td>{{ n.related_type or '-' }} {{ n.related_id or '' }}</td><td>{{ n.status }}</td><td>{{ n.sent_at }}</td></tr>{% else %}<tr><td colspan="7" class="text-center">No notifications.</td></tr>{% endfor %}
+                </tbody></table></div></div></section>
+
+                <!-- PDF REPORTS TAB -->
+                <section id="reports-tab" class="tab-content">
+                    <div class="content-card">
+                        <div class="card-header"><h2>Audit Trail Report</h2></div>
+                        <form action="{{ url_for('report_audit_trail_pdf') }}" method="GET" target="_blank" class="report-filter-form">
+                            <div class="form-group"><label>Date From</label><input type="date" name="date_from" class="form-input"></div>
+                            <div class="form-group"><label>Date To</label><input type="date" name="date_to" class="form-input"></div>
+                            <div class="form-group"><label>Username</label><input type="text" name="username" class="form-input" placeholder="e.g. jdoe"></div>
+                            <div class="form-group"><label>Role</label><select name="role" class="form-input"><option value="">Any</option><option>Homeowner</option><option>Secretary</option><option>Treasurer</option><option>President</option><option>Vice President</option><option>Board Director</option><option>Admin</option></select></div>
+                            <div class="form-group"><label>Action Contains</label><input type="text" name="action" class="form-input" placeholder="e.g. Login"></div>
+                            <button type="submit" class="btn btn-primary">Generate PDF</button>
+                        </form>
+                    </div>
+
+                    <div class="content-card">
+                        <div class="card-header"><h2>Requests Report</h2></div>
+                        <form action="{{ url_for('report_requests_pdf') }}" method="GET" target="_blank" class="report-filter-form">
+                            <div class="form-group"><label>Date From</label><input type="date" name="date_from" class="form-input"></div>
+                            <div class="form-group"><label>Date To</label><input type="date" name="date_to" class="form-input"></div>
+                            <div class="form-group"><label>Status</label><select name="status" class="form-input"><option value="">Any</option><option>Submitted</option><option>Under Review</option><option>Checked</option><option>For Correction</option><option>Pending Executive Approval</option><option>Approved</option><option>Rejected</option><option>Paid and Approved</option><option>Cancelled</option></select></div>
+                            <div class="form-group"><label>Request Type</label><input type="text" name="request_type" class="form-input" placeholder="e.g. Gate Pass"></div>
+                            <div class="form-group"><label>Payment Status</label><select name="payment_status" class="form-input"><option value="">Any</option><option>Unpaid</option><option>Paid</option><option>Not Required</option></select></div>
+                            <button type="submit" class="btn btn-primary">Generate PDF</button>
+                        </form>
+                    </div>
+
+                    <div class="content-card">
+                        <div class="card-header"><h2>Vehicle Stickers Report</h2></div>
+                        <form action="{{ url_for('report_vehicle_stickers_pdf') }}" method="GET" target="_blank" class="report-filter-form">
+                            <div class="form-group"><label>Date From</label><input type="date" name="date_from" class="form-input"></div>
+                            <div class="form-group"><label>Date To</label><input type="date" name="date_to" class="form-input"></div>
+                            <div class="form-group"><label>Status</label><select name="status" class="form-input"><option value="">Any</option><option>Submitted</option><option>Under Review</option><option>Checked</option><option>For Correction</option><option>Pending Executive Approval</option><option>Approved</option><option>Rejected</option><option>Paid and Approved</option><option>Cancelled</option></select></div>
+                            <button type="submit" class="btn btn-primary">Generate PDF</button>
+                        </form>
+                    </div>
+
+                    <div class="content-card">
+                        <div class="card-header"><h2>Missing Monthly Dues Report</h2></div>
+                        <form action="{{ url_for('report_adjustments_pdf') }}" method="GET" target="_blank" class="report-filter-form">
+                            <div class="form-group"><label>Date From</label><input type="date" name="date_from" class="form-input"></div>
+                            <div class="form-group"><label>Date To</label><input type="date" name="date_to" class="form-input"></div>
+                            <button type="submit" class="btn btn-primary">Generate PDF</button>
+                        </form>
+                    </div>
+
+                    <div class="content-card">
+                        <div class="card-header"><h2>Officer / User Records Report</h2></div>
+                        <form action="{{ url_for('report_officers_pdf') }}" method="GET" target="_blank" class="report-filter-form">
+                            <div class="form-group"><label>Role</label><select name="role" class="form-input"><option value="">Any</option><option>Secretary</option><option>Treasurer</option><option>President</option><option>Vice President</option><option>Board Director</option></select></div>
+                            <div class="form-group"><label>Status</label><select name="status" class="form-input"><option value="">Any</option><option>Active</option><option>Inactive</option></select></div>
+                            <button type="submit" class="btn btn-primary">Generate PDF</button>
+                        </form>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="createOfficerModal"><div class="modal-box"><div class="modal-header"><h3>Create New Officer Account</h3><button class="close-btn" onclick="closeModal('createOfficerModal')">&times;</button></div><form action="{{ url_for('create_officer') }}" method="POST" data-system-confirm="Create this officer account using the information provided?" data-confirm-title="Create Officer Account" data-confirm-text="Create Account"><div class="modal-body">
+        <div class="form-group"><label>Full Name</label><input type="text" name="full_name" required class="form-input"></div>
+        <div class="form-group"><label>Username</label><input type="text" name="username" required class="form-input"></div>
+        <div class="form-group"><label>Email Address</label><input type="email" name="email" required class="form-input"></div>
+        <div class="form-group"><label>Phone Number</label><input type="tel" name="phone" required class="form-input" placeholder="09XXXXXXXXX" pattern="09\d{9}" title="11 digits starting with 09"></div>
+        <div class="form-group"><label>Password <span aria-hidden="true">*</span></label><div class="password-field"><input type="password" name="password" id="create-officer-password" required class="form-input" minlength="8" autocomplete="new-password"><button type="button" class="password-toggle" data-toggle-password="create-officer-password" aria-label="Show password" title="Show password"><svg class="eye-icon eye-open" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.7"/></svg><svg class="eye-icon eye-closed" viewBox="0 0 24 24" aria-hidden="true" hidden><path d="M3 3l18 18"/><path d="M10.6 6.2A9.7 9.7 0 0 1 12 6c6 0 9.5 6 9.5 6a16 16 0 0 1-3.1 3.8M6.2 6.2C3.8 8 2.5 12 2.5 12s3.5 6 9.5 6a9.8 9.8 0 0 0 3.2-.5"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg></button></div><span class="password-inline-message" data-password-message-for="create-officer-password" aria-live="polite"></span><small class="form-help">Use at least 8 characters.</small></div>
+        <div class="form-group"><label>Role</label><select name="role" required class="form-input"><option>Secretary</option><option>Treasurer</option><option>President</option><option>Vice President</option><option>Board Director</option></select></div>
+    </div><div class="modal-footer"><button type="button" class="btn btn-secondary" onclick="closeModal('createOfficerModal')">Cancel</button><button type="submit" class="btn btn-primary">Create Account</button></div></form></div></div>
+
+
+    <div class="modal-overlay unified-logout-overlay" id="logoutModal" role="dialog" aria-modal="true" aria-labelledby="logoutTitle"><div class="modal-box unified-logout-card"><button class="unified-logout-close" type="button" onclick="closeModal('logoutModal')" aria-label="Close">&times;</button><div class="unified-logout-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></div><h3 id="logoutTitle">Sign Out</h3><p>Are you sure you want to sign out of your account?</p><div class="unified-logout-actions"><button type="button" class="btn btn-secondary" onclick="closeModal('logoutModal')">Cancel</button><a href="{{ url_for('logout') }}" class="btn unified-logout-primary">Sign Out</a></div></div></div>
+
+
+    <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+    <div class="modal-overlay system-confirm-overlay" id="systemConfirmModal" role="dialog" aria-modal="true" aria-labelledby="systemConfirmTitle"><div class="modal-box system-confirm-box"><div class="confirm-icon-wrap" aria-hidden="true">✓</div><div class="confirm-copy"><span class="modal-eyebrow">NFH HOA</span><h3 id="systemConfirmTitle">Confirm Action</h3><p id="systemConfirmMessage"></p></div><div id="systemConfirmContext" class="confirm-context" hidden></div><div class="modal-footer system-confirm-footer"><button type="button" id="systemConfirmCancel" class="btn btn-secondary">Cancel</button><button type="button" id="systemConfirmButton" class="btn confirm-primary">Confirm</button></div></div></div>
+    <script>const SERVER_FLASH_MESSAGES = {{ get_flashed_messages(with_categories=true) | tojson }}.map(([category,message])=>({category,message}));</script>
+
+    <!-- Shared 30-minute inactivity security warning -->
+    <div class="session-timeout-overlay" id="sessionTimeoutModal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="sessionTimeoutTitle" aria-describedby="sessionTimeoutDescription" data-user-key="{{ session.user_id }}" data-timeout-seconds="{{ session_timeout_seconds }}" data-warning-seconds="{{ session_warning_seconds }}">
+        <div class="session-timeout-dialog" role="document">
+            <div class="session-timeout-accent"></div>
+            <div class="session-timeout-body">
+                <div class="session-timeout-heading">
+                    <span class="session-timeout-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5l3.2 1.8"/><path d="M8.1 2.9 6.3 5.1M15.9 2.9l1.8 2.2"/></svg></span>
+                    <div><p class="session-timeout-eyebrow">Account Security</p><h2 class="session-timeout-title" id="sessionTimeoutTitle">Session Expiring Soon</h2></div>
+                </div>
+                <p class="session-timeout-copy" id="sessionTimeoutDescription">For your account security, your session will automatically end after 30 minutes of inactivity. Select <strong>Stay Signed In</strong> to continue your current session.</p>
+                <div class="session-timeout-countdown" aria-live="polite"><span>Session expires in</span><strong id="sessionTimeoutCountdown">05:00</strong></div>
+            </div>
+            <div class="session-timeout-actions">
+                <button type="button" class="session-timeout-btn session-timeout-btn-secondary" id="sessionSignOutNow">Sign Out Now</button>
+                <button type="button" class="session-timeout-btn session-timeout-btn-primary" id="sessionStaySignedIn">Stay Signed In</button>
+            </div>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='session-timeout.js') }}"></script>
+    <script src="{{ url_for('static', filename='admin.js') }}"></script>
+</body>
+</html>
