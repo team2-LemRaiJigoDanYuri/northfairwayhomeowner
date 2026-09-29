@@ -41,8 +41,6 @@ if SESSION_WARNING_MINUTES >= SESSION_INACTIVITY_MINUTES:
 SESSION_INACTIVITY_SECONDS = SESSION_INACTIVITY_MINUTES * 60
 SESSION_WARNING_SECONDS = SESSION_WARNING_MINUTES * 60
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(seconds=SESSION_INACTIVITY_SECONDS)
-# Background requests must not refresh the cookie simply because a request was
-# made. Real activity updates the session explicitly below.
 app.config['SESSION_REFRESH_EACH_REQUEST'] = False
 
 # Endpoints that run automatically in the background and therefore must never
@@ -2414,4 +2412,3 @@ def report_officers_pdf():
 # ===========================================================================
 if __name__ == '__main__':
     app.run(debug=True, host='127.0.0.1', port=5000)
-                               
