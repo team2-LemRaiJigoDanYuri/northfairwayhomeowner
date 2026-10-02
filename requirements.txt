@@ -1,7 +1,0 @@
-Flask
-Flask-Mail
-PyMySQL
-python-dotenv
-reportlab
-werkzeug
-gunicorn
